@@ -1,0 +1,171 @@
+= Email Assistant API Documentation
+:doctype: book
+:icons: font
+:source-highlighter: highlightjs
+:toc: left
+:toclevels: 3
+:sectlinks:
+:operation-curl-request-title: Example request
+:operation-http-response-title: Example response
+
+== Introduction
+
+This documentation describes the RESTful API for the Email Assistant application, which provides functionalities for fetching and replying to emails.
+
+== API Endpoints
+
+=== Fetch Emails
+
+You can fetch emails using either query parameters or path variables.
+
+==== Using Query Parameters
+
+.Request parameters
+|===
+|Parameter|Description|Required|Default
+
+|count
+|Number of emails to fetch (1-50)
+|No
+|5
+|===
+
+.Example request
+[source,bash]
+----
+curl -X GET "http://localhost:8081/email/fetch?count=5" -H "accept: application/json"
+----
+
+==== Using Path Variables
+
+.Path variables
+|===
+|Variable|Description|Required
+
+|count
+|Number of emails to fetch (1-50)
+|Yes
+|===
+
+.Example request
+[source,bash]
+----
+curl -X GET "http://localhost:8081/email/fetch/5" -H "accept: application/json"
+----
+
+.Example response (for both methods)
+[source,json]
+----
+[
+  {
+    "index": 1,
+    "sender": "example@gmail.com",
+    "subject": "Hello",
+    "date": "2025-03-02T10:00:00",
+    "content": "This is an example email content."
+  }
+]
+----
+
+.Response fields
+|===
+|Field|Type|Description
+
+|index
+|Number
+|The position of the email in the inbox (1-based)
+
+|sender
+|String
+|The email address of the sender
+
+|subject
+|String
+|The subject line of the email
+
+|date
+|String
+|The date and time when the email was received
+
+|content
+|String
+|The body content of the email
+|===
+
+=== Reply to Email
+
+You can reply to emails using either query parameters or path variables.
+
+==== Using Query Parameters
+
+.Request parameters
+|===
+|Parameter|Description|Required
+
+|emailIndex
+|Index of the email to reply to (1-based)
+|Yes
+|===
+
+.Request fields
+|===
+|Field|Type|Description
+
+|replyText
+|String
+|The content of the reply email
+|===
+
+.Example request
+[source,bash]
+----
+curl -X POST "http://localhost:8081/email/reply?emailIndex=1" -H "accept: application/json" -H "Content-Type: application/json" -d "{ \"replyText\": \"Thank you for your email. I will get back to you soon.\" }"
+----
+
+==== Using Path Variables
+
+.Path variables
+|===
+|Variable|Description|Required
+
+|emailIndex
+|Index of the email to reply to (1-based)
+|Yes
+|===
+
+.Request fields
+|===
+|Field|Type|Description
+
+|replyText
+|String
+|The content of the reply email
+|===
+
+.Example request
+[source,bash]
+----
+curl -X POST "http://localhost:8081/email/reply/1" -H "accept: application/json" -H "Content-Type: application/json" -d "{ \"replyText\": \"Thank you for your email. I will get back to you soon.\" }"
+----
+
+.Example response (for both methods)
+[source,json]
+----
+{
+  "success": true,
+  "message": "Email reply sent successfully"
+}
+----
+
+.Response fields
+|===
+|Field|Type|Description
+
+|success
+|Boolean
+|Indicates whether the operation was successful
+
+|message
+|String
+|A descriptive message about the result of the operation
+|=== 
