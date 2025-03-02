@@ -1,161 +1,170 @@
-=======
 # Email Assistant API
 
-A Spring Boot application that provides a RESTful API for managing emails, including fetching and replying to emails from your Gmail account using OAuth2 authentication.
+A Spring Boot application that provides a RESTful API for managing emails using Gmail with OAuth2 authentication and AI-powered responses.
 
-## 📋 Features
+## Features
 
-- **Email Fetching**: Retrieve emails from your Gmail inbox
-- **Email Replying**: Send replies to received emails
-- **OAuth2 Authentication**: Secure Gmail API integration
-- **RESTful API**: Clean API design with both query parameter and path variable support
-- **Documentation**: Comprehensive API documentation using Spring REST Docs and AsciiDoc
+- **Email Management**: Fetch emails from your inbox and send AI-generated replies
+- **Gmail OAuth2 Integration**: Secure access to your Gmail account
+- **AI-Powered Responses**: Generate intelligent email replies using Ollama with Mistral LLM
+- **Test Mode**: Run with mock implementations for development without real credentials
+- **Flexible Configuration**: Environment variables or properties file for easy setup
+- **Security-Focused**: Sensitive data kept out of source control
 
-## 🛠️ Technologies
+## Technologies
 
-- Java 17+
-- Spring Boot 3.4.3
-- OAuth2 for Gmail API authentication
-- Jakarta Mail API for email operations
-- Maven for dependency management and build
-- AsciiDoc for API documentation
+- Java 17+ and Spring Boot 3.4.3
+- Gmail API with OAuth2 authentication
+- Ollama with Mistral LLM for AI responses
+- Docker for running the AI model
 
-## 🚀 Getting Started
+## Quick Start
 
 ### Prerequisites
 
 - JDK 17 or higher
-- Maven 3.6 or higher
-- Google API credentials for Gmail access
+- Maven 3.6+
+- Docker (for running Ollama)
+- Google API credentials (not required for test mode)
 
 ### Installation
 
-1. Clone the repository:
+1. **Clone the repository**
    ```bash
    git clone https://github.com/your-username/Email-Assistant.git
    cd Email-Assistant
    ```
 
-2. Configure Gmail OAuth2 credentials:
-   - Place your `credentials.json` file in the root directory
-   - The file should contain your OAuth 2.0 Client ID and Client Secret from Google Cloud Console
+2. **Setup Google API credentials** (skip if using test mode)
+   - Create a project in [Google Cloud Console](https://console.cloud.google.com/)
+   - Enable the Gmail API and set up OAuth consent screen
+   - Create OAuth credentials and download as `credentials.json`
+   - Place `credentials.json` in the project root directory
 
-3. Build the application:
+3. **Configure your email**
    ```bash
+   cp src/main/resources/application.properties.template src/main/resources/application.properties
+   ```
+   Edit to set your Gmail address:
+   ```properties
+   email.account.address=your-email@gmail.com
+   ```
+
+4. **Setup Ollama with Mistral** (optional for test mode)
+   ```bash
+   # Pull and run Ollama
+   docker pull ghcr.io/ollama/ollama
+   docker run --rm -d --name ollama -p 11434:11434 ghcr.io/ollama/ollama
+   
+   # Pull the Mistral model
+   docker exec -it ollama ollama pull mistral
+   ```
+
+5. **Build and run**
+   ```bash
+   # Run with real email integration
    mvn clean package
-   ```
-
-4. Run the application:
-   ```bash
    java -jar target/Email-Assistant-0.0.1-SNAPSHOT.jar
+   
+   # Run in test mode (no real email credentials needed)
+   mvn spring-boot:run -Dspring-boot.run.profiles=test
    ```
-
-5. The API will be available at:
+   
+6. **Access the API**
    ```
    http://localhost:8081
    ```
 
-## ⚙️ Configuration
+## Test Mode
 
-### Application Properties
+The application supports a `test` profile that uses mock implementations instead of connecting to real email servers:
 
-Key application properties are configured in `src/main/resources/application.properties`:
+### Features in Test Mode
 
-- Server port: 8081
-- Logging configurations
-- Email service configurations
+- **No External Dependencies**: Works without Gmail API credentials
+- **Mock Emails**: Returns simulated email messages
+- **Mock AI Responses**: Provides predefined responses instead of calling the LLM
+- **Simplified Testing**: Focus on API functionality without external services
 
-### OAuth2 Setup
+### Running in Test Mode
 
-On first run, the application will prompt you to authorize access to your Gmail account:
-1. A browser will open with a Google authorization page
-2. Sign in with your Google account and grant the requested permissions
-3. The authorization token will be saved for future use
+```bash
+# Using Maven
+mvn spring-boot:run -Dspring-boot.run.profiles=test
 
-## 📚 API Documentation
+# Using Java jar
+java -jar target/Email-Assistant-0.0.1-SNAPSHOT.jar --spring.profiles.active=test
 
-The API documentation is available at:
+# Using .env file
+# Add SPRING_PROFILES_ACTIVE=test to your .env file
 ```
-http://localhost:8081/docs
-```
 
-### API Endpoints
-
-#### Fetch Emails
-
-- Using Query Parameters:
-  ```
-  GET /email/fetch?count={number}
-  ```
-
-- Using Path Variables:
-  ```
-  GET /email/fetch/{count}
-  ```
-  
-#### Reply to Emails
-
-- Using Query Parameters:
-  ```
-  POST /email/reply?emailIndex={index}
-  ```
-
-- Using Path Variables:
-  ```
-  POST /email/reply/{emailIndex}
-  ```
-
-## 📝 Usage Examples
+## API Endpoints
 
 ### Fetch Emails
-
-```bash
-# Fetch 5 emails (using query parameters)
-curl -X GET "http://localhost:8081/email/fetch?count=5" -H "accept: application/json"
-
-# Fetch 3 emails (using path variables)
-curl -X GET "http://localhost:8081/email/fetch/3" -H "accept: application/json"
+```
+GET /email/fetch/{count}
+GET /email/fetch?count={number}
 ```
 
-### Reply to an Email
-
-```bash
-# Reply to the most recent email (using query parameters)
-curl -X POST "http://localhost:8081/email/reply?emailIndex=1" \
-     -H "accept: application/json" \
-     -H "Content-Type: application/json" \
-     -d '{"replyText": "Thank you for your email. I will get back to you soon."}'
-
-# Reply to the most recent email (using path variables)
-curl -X POST "http://localhost:8081/email/reply/1" \
-     -H "accept: application/json" \
-     -H "Content-Type: application/json" \
-     -d '{"replyText": "Thank you for your email. I will get back to you soon."}'
+### Reply to Emails
+```
+POST /email/reply/{emailIndex}
+POST /email/reply?emailIndex={index}
 ```
 
-## 🧪 Testing
+## Detailed Setup Guide
 
-Run the tests using Maven:
+### Gmail API Credentials
 
-```bash
-mvn test
-```
+1. **Create a Google Cloud Project**
+   - Visit [Google Cloud Console](https://console.cloud.google.com/)
+   - Create a new project
 
-## 🤝 Contributing
+2. **Enable Gmail API**
+   - Go to "APIs & Services" > "Library"
+   - Search for and enable "Gmail API"
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/my-feature`
-3. Commit your changes: `git commit -am 'Add new feature'`
-4. Push to the branch: `git push origin feature/my-feature`
-5. Submit a pull request
+3. **Configure OAuth**
+   - Set up the OAuth consent screen (External)
+   - Add scope: `https://mail.google.com/`
+   - Add your email as a test user
 
-## 📄 License
+4. **Create Credentials**
+   - Create OAuth client ID (Desktop app type)
+   - Download the JSON file and rename to `credentials.json`
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+### Ollama Mistral Setup
 
-## 🙏 Acknowledgements
+The application uses Ollama with Mistral LLM for generating email replies:
 
-- [Spring Boot](https://spring.io/projects/spring-boot)
-- [Google API Client Library for Java](https://github.com/googleapis/google-api-java-client)
-- [Jakarta Mail](https://eclipse-ee4j.github.io/mail/) 
->>>>>>> b191683 (Initial commit)
+1. **Run Ollama**
+   ```bash
+   docker run --rm -d --name ollama -p 11434:11434 ghcr.io/ollama/ollama
+   ```
+
+2. **Install Mistral**
+   ```bash
+   docker exec -it ollama ollama pull mistral
+   ```
+
+3. **Verify Installation**
+   ```bash
+   curl -X POST http://localhost:11434/api/generate \
+        -d '{"model": "mistral", "prompt": "Write a short email", "stream": false}'
+   ```
+
+## Configuration Options
+
+- **Properties File**: Use `application.properties` for configuration
+- **Environment Variables**: Set values like `EMAIL_ACCOUNT_ADDRESS=your-email@gmail.com`
+- **Dotenv File**: Create `.env` file based on `.env.example`
+- **Test Profile**: Use `-Dspring-boot.run.profiles=test` for development without real credentials
+
+## Documentation
+
+API documentation is available at `http://localhost:8081/docs` when the application is running.
+
+## License
+
+This project is licensed under the MIT License.

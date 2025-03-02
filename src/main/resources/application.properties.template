@@ -1,0 +1,22 @@
+spring.application.name=Email-Assistant
+server.port=8081
+
+# Enable logging to file
+logging.file.name=logs/email-assistant.log
+logging.level.root=INFO
+logging.level.com.AI_Powered.Email.Assistant=DEBUG
+logging.level.org.springframework.mail=DEBUG
+logging.level.com.sun.mail=DEBUG
+
+# OAuth2 debug
+logging.level.org.springframework.security.oauth2=DEBUG
+logging.level.org.springframework.web=DEBUG
+
+# Email Configuration
+email.account.address=YOUR_EMAIL@gmail.com
+email.imap.host=imap.gmail.com
+
+# SMTP Configuration
+email.smtp.host=smtp.gmail.com
+email.smtp.port=587
+email.smtp.ssl.trust=smtp.gmail.com 

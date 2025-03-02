@@ -1,11 +1,14 @@
 package com.AI_Powered.Email.Assistant.AIEmailAssitService;
 
+import com.AI_Powered.Email.Assistant.Config.MockAIResponseGeneratorConfig;
 import com.AI_Powered.Email.Assistant.exception.EmailAssistantException;
 import com.AI_Powered.Email.Assistant.exception.EmailAssistantException.ErrorCode;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.env.Environment;
+import org.springframework.stereotype.Service;
 
 import java.io.*;
 import java.net.HttpURLConnection;
@@ -13,14 +16,42 @@ import java.net.URL;
 import java.net.ConnectException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 
+/**
+ * Service for generating AI-powered responses to emails.
+ * In test mode, it returns a mock response instead of calling the actual AI model.
+ */
+@Service
 public class AIResponseGenerator {
     private static final Logger logger = LoggerFactory.getLogger(AIResponseGenerator.class);
     private static final String MODEL_API_URL = "http://localhost:11434/api/generate";
     private static final int CONNECT_TIMEOUT_MS = 10000;
     private static final int READ_TIMEOUT_MS = 30000;
-
+    private static Environment environment;
+    
+    // Constructor to get access to the Spring environment
+    public AIResponseGenerator(Environment env) {
+        environment = env;
+        logger.info("AIResponseGenerator initialized with environment: {}", 
+                Arrays.toString(environment.getActiveProfiles()));
+    }
+    
+    /**
+     * Generate an AI-powered response to an email.
+     * 
+     * @param sender The sender of the original email
+     * @param subject The subject of the original email
+     * @param emailBody The body of the original email
+     * @return AI-generated response formatted as HTML
+     */
     public static String generateResponse(String sender, String subject, String emailBody) {
+        // Check if we're in test mode
+        if (environment != null && environment.matchesProfiles("test")) {
+            logger.info("Using mock response generator in test profile");
+            return MockAIResponseGeneratorConfig.generateMockResponse(sender, subject, emailBody);
+        }
+        
         if (sender == null || sender.trim().isEmpty()) {
             logger.error("Sender email cannot be empty");
             throw new EmailAssistantException(ErrorCode.INVALID_REQUEST, "Sender email cannot be empty");

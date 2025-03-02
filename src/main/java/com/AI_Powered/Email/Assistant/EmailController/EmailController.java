@@ -2,6 +2,7 @@ package com.AI_Powered.Email.Assistant.EmailController;
 
 import com.AI_Powered.Email.Assistant.AIEmailAssitService.EmailFetcher;
 import com.AI_Powered.Email.Assistant.AIEmailAssitService.EmailSenderService;
+import com.AI_Powered.Email.Assistant.AIEmailAssitService.MockEmailFetcher;
 import com.AI_Powered.Email.Assistant.exception.EmailAssistantException;
 import com.AI_Powered.Email.Assistant.exception.EmailAssistantException.ErrorCode;
 import com.AI_Powered.Email.Assistant.model.EmailResponse;
@@ -9,6 +10,8 @@ import com.AI_Powered.Email.Assistant.model.ReplyRequest;
 import jakarta.mail.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,9 +24,16 @@ import java.util.List;
 public class EmailController {
     private static final Logger logger = LoggerFactory.getLogger(EmailController.class);
     private final EmailSenderService emailSenderService;
+    private final Environment environment;
+    private final MockEmailFetcher mockEmailFetcher;
 
-    public EmailController(EmailSenderService emailSenderService) {
+    @Autowired
+    public EmailController(EmailSenderService emailSenderService, Environment environment, MockEmailFetcher mockEmailFetcher) {
         this.emailSenderService = emailSenderService;
+        this.environment = environment;
+        this.mockEmailFetcher = mockEmailFetcher;
+        logger.info("EmailController initialized with environment: {}", 
+                environment.getActiveProfiles().length > 0 ? environment.getActiveProfiles()[0] : "default");
     }
 
     @GetMapping("/fetch")
@@ -41,7 +51,17 @@ public class EmailController {
         }
         
         try {
-            Message[] messages = EmailFetcher.fetchEmails(count);
+            Message[] messages;
+            
+            // Use MockEmailFetcher if in test mode
+            if (environment.matchesProfiles("test")) {
+                logger.info("Using MockEmailFetcher for test profile");
+                messages = mockEmailFetcher.fetchEmails(count);
+            } else {
+                logger.info("Using real EmailFetcher");
+                messages = EmailFetcher.fetchEmails(count);
+            }
+            
             List<EmailResponse> emailList = new ArrayList<>();
             
             for (Message msg : messages) {
@@ -102,7 +122,16 @@ public class EmailController {
         }
         
         try {
-            Message[] messages = EmailFetcher.fetchEmails(Math.max(10, emailIndex)); // Fetch enough emails
+            Message[] messages;
+            
+            // Use MockEmailFetcher if in test mode
+            if (environment.matchesProfiles("test")) {
+                logger.info("Using MockEmailFetcher for test profile");
+                messages = mockEmailFetcher.fetchEmails(Math.max(10, emailIndex));
+            } else {
+                logger.info("Using real EmailFetcher");
+                messages = EmailFetcher.fetchEmails(Math.max(10, emailIndex));
+            }
             
             if (emailIndex > messages.length) {
                 logger.warn("Email index {} out of range (max: {})", emailIndex, messages.length);

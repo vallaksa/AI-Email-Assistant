@@ -42,6 +42,7 @@ public class EmailAssistantException extends RuntimeException {
         EMAIL_REPLY_ERROR,
         AI_SERVICE_ERROR,
         AUTHENTICATION_ERROR,
-        INVALID_REQUEST
+        INVALID_REQUEST,
+        CONFIGURATION_ERROR
     }
 } 
