@@ -1,14 +1,12 @@
 package com.ai.emailassistant.controller;
 
-import com.ai.emailassistant.model.model.FetchEmailsRequest;
 import com.ai.emailassistant.service.FetchEmailsService;
 import com.ai.emailassistant.service.ReplyToEmailService;
-import com.ai.emailassistant.model.model.ApiResponse;
-import com.ai.emailassistant.model.model.EmailMessage;
-import com.ai.emailassistant.model.model.ReplyRequest;
+import com.ai.emailassistant.model.RequestResponse.EmailResponse;
+import com.ai.emailassistant.model.EmailMessage;
+import com.ai.emailassistant.model.RequestResponse.AIRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,30 +30,18 @@ public class EmailController {
      * POST /api/emails/fetch
      * Fetch the most recent emails.
      */
-    @PostMapping("/fetch")
-    public ResponseEntity<ApiResponse<List<EmailMessage>>> fetchEmails(
-        @RequestBody FetchEmailsRequest request
+    @PostMapping("/fetch/{limit}")
+    public ResponseEntity<EmailResponse<List<EmailMessage>>> fetchEmails(
+        @PathVariable int limit
     ) {
-        int limit = request != null && request.getLimit() != null ? request.getLimit() : 10;
-        log.info("Received request to fetch emails with limit: {}", limit);
+        int resolvedLimit = limit > 0 ? limit : 10;
+        log.info("Received request to fetch emails with limit: {}", resolvedLimit);
 
-        try {
-            List<EmailMessage> emails = fetchEmailsService.execute(limit);
+        List<EmailMessage> emails = fetchEmailsService.execute(resolvedLimit);
 
-            return ResponseEntity.ok(
-                ApiResponse.ok("Successfully fetched emails", emails)
-            );
-        } catch (IllegalArgumentException e) {
-            log.warn("Invalid request: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(
-                ApiResponse.error("Invalid request", e.getMessage())
-            );
-        } catch (Exception e) {
-            log.error("Error fetching emails", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
-                ApiResponse.error("Internal server error", "Failed to fetch emails")
-            );
-        }
+        return ResponseEntity.ok(
+                EmailResponse.ok("Successfully fetched emails", emails)
+        );
     }
 
     /**
@@ -63,34 +49,22 @@ public class EmailController {
      * Generate and send an AI reply to a selected email.
      */
     @PostMapping("/reply")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> replyToEmail(
-        @RequestBody ReplyRequest request
+    public ResponseEntity<EmailResponse<Map<String, Object>>> replyToEmail(
+        @RequestBody AIRequest request
     ) {
-        log.info("Received request to reply to email at index: {}", request.getIndex());
+        log.info("Received request to reply to email.");
 
-        try {
-            String replyPreview = replyToEmailService.execute(
-                request.getIndex(),
-                request.getUserInstruction()
-            );
+        String replyPreview = replyToEmailService.execute(
+            request.getIndex(),
+            request.getUserInstruction()
+        );
 
-            Map<String, Object> data = new HashMap<>();
-            data.put("index", request.getIndex());
-            data.put("replyPreview", replyPreview);
+        Map<String, Object> data = new HashMap<>();
+        data.put("index", request.getIndex());
+        data.put("replyPreview", replyPreview);
 
-            return ResponseEntity.ok(
-                ApiResponse.ok("Reply sent successfully", data)
-            );
-        } catch (IllegalArgumentException e) {
-            log.warn("Invalid request: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(
-                ApiResponse.error("Invalid request", e.getMessage())
-            );
-        } catch (Exception e) {
-            log.error("Error sending reply", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
-                ApiResponse.error("Internal server error", "Failed to send reply")
-            );
-        }
+        return ResponseEntity.ok(
+            EmailResponse.ok("Reply sent successfully", data)
+        );
     }
 }

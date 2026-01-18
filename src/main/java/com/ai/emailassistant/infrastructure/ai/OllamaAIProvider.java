@@ -1,14 +1,11 @@
 package com.ai.emailassistant.infrastructure.ai;
 
-import com.ai.emailassistant.model.model.EmailMessage;
+import com.ai.emailassistant.model.EmailMessage;
+import com.ai.emailassistant.model.RequestResponse.OllamaRequest;
+import com.ai.emailassistant.model.RequestResponse.OllamaResponse;
 import com.ai.emailassistant.model.ports.AIProvider;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -138,45 +135,5 @@ public class OllamaAIProvider implements AIProvider {
         return prompt.toString();
     }
 
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @Builder
-    public static class OllamaRequest {
-        private String model;
-        private String prompt;
-        private boolean stream;
-        private Double temperature;
 
-        @JsonProperty("num_predict")
-        private Integer numPredict;
-    }
-
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class OllamaResponse {
-        private String model;
-        private String response;
-        private boolean done;
-
-        @JsonProperty("created_at")
-        private String createdAt;
-
-        @JsonProperty("total_duration")
-        private Long totalDuration;
-
-        @JsonProperty("load_duration")
-        private Long loadDuration;
-
-        @JsonProperty("prompt_eval_count")
-        private Integer promptEvalCount;
-
-        @JsonProperty("eval_count")
-        private Integer evalCount;
-
-        @JsonProperty("eval_duration")
-        private Long evalDuration;
-    }
 }

@@ -1,6 +1,6 @@
 package com.ai.emailassistant.service;
 
-import com.ai.emailassistant.model.model.EmailMessage;
+import com.ai.emailassistant.model.EmailMessage;
 import com.ai.emailassistant.model.ports.AIProvider;
 import com.ai.emailassistant.model.ports.EmailProvider;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +31,10 @@ public class ReplyToEmailService {
      */
     public String execute(int index, String userInstruction) {
         log.info("Replying to email at index: {}", index);
+
+        if (index <= 0) {
+            throw new IllegalArgumentException("Index must be greater than 0");
+        }
 
         // Step 1: Get cached email
         EmailMessage email = fetchEmailsService.getCachedEmail(index);
