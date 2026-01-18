@@ -8,7 +8,6 @@ import com.ai.emailassistant.model.model.EmailMessage;
 import com.ai.emailassistant.model.model.ReplyRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -39,23 +38,11 @@ public class EmailController {
         int limit = request != null && request.getLimit() != null ? request.getLimit() : 10;
         log.info("Received request to fetch emails with limit: {}", limit);
 
-        try {
-            List<EmailMessage> emails = fetchEmailsService.execute(limit);
+        List<EmailMessage> emails = fetchEmailsService.execute(limit);
 
-            return ResponseEntity.ok(
-                ApiResponse.ok("Successfully fetched emails", emails)
-            );
-        } catch (IllegalArgumentException e) {
-            log.warn("Invalid request: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(
-                ApiResponse.error("Invalid request", e.getMessage())
-            );
-        } catch (Exception e) {
-            log.error("Error fetching emails", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
-                ApiResponse.error("Internal server error", "Failed to fetch emails")
-            );
-        }
+        return ResponseEntity.ok(
+            ApiResponse.ok("Successfully fetched emails", emails)
+        );
     }
 
     /**
@@ -66,31 +53,19 @@ public class EmailController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> replyToEmail(
         @RequestBody ReplyRequest request
     ) {
-        log.info("Received request to reply to email at index: {}", request.getIndex());
+        log.info("Received request to reply to email.");
 
-        try {
-            String replyPreview = replyToEmailService.execute(
-                request.getIndex(),
-                request.getUserInstruction()
-            );
+        String replyPreview = replyToEmailService.execute(
+            request.getIndex(),
+            request.getUserInstruction()
+        );
 
-            Map<String, Object> data = new HashMap<>();
-            data.put("index", request.getIndex());
-            data.put("replyPreview", replyPreview);
+        Map<String, Object> data = new HashMap<>();
+        data.put("index", request.getIndex());
+        data.put("replyPreview", replyPreview);
 
-            return ResponseEntity.ok(
-                ApiResponse.ok("Reply sent successfully", data)
-            );
-        } catch (IllegalArgumentException e) {
-            log.warn("Invalid request: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(
-                ApiResponse.error("Invalid request", e.getMessage())
-            );
-        } catch (Exception e) {
-            log.error("Error sending reply", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
-                ApiResponse.error("Internal server error", "Failed to send reply")
-            );
-        }
+        return ResponseEntity.ok(
+            ApiResponse.ok("Reply sent successfully", data)
+        );
     }
 }
