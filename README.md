@@ -60,7 +60,29 @@ A Spring Boot application that provides a RESTful API for managing emails using 
    docker exec -it ollama ollama pull mistral
    ```
 
-5. **Build and run**
+5. **Using the Fine-tuned AEA Model** (optional)
+   
+   The application supports using a fine-tuned model specifically for email responses:
+   
+   ```bash
+   # Create the fine-tuned model (run once)
+   echo -e "FROM mistral\nSYSTEM \"You are an AI email assistant. Generate professional and concise email responses based on user queries. Be polite and context-aware.\"" > Modelfile
+   docker exec -it ollama ollama create AEA -f Modelfile
+   
+   # Configure the application to use the fine-tuned model
+   # Option 1: Edit application.properties
+   ai.model.name=AEA
+   
+   # Option 2: Set environment variable
+   export AI_MODEL_NAME=AEA
+   
+   # Option 3: Add to .env file
+   AI_MODEL_NAME=AEA
+   ```
+   
+   Note: Other users who don't have the fine-tuned model will automatically fall back to using the default Mistral model.
+
+6. **Build and run**
    ```bash
    # Run with real email integration
    mvn clean package
@@ -70,7 +92,7 @@ A Spring Boot application that provides a RESTful API for managing emails using 
    mvn spring-boot:run -Dspring-boot.run.profiles=test
    ```
    
-6. **Access the API**
+7. **Access the API**
    ```
    http://localhost:8081
    ```
@@ -154,12 +176,39 @@ The application uses Ollama with Mistral LLM for generating email replies:
         -d '{"model": "mistral", "prompt": "Write a short email", "stream": false}'
    ```
 
+4. **Fine-tuned AEA Model** (optional)
+   
+   For improved email responses, you can use the fine-tuned AEA model:
+   
+   ```bash
+   # Create the fine-tuned model
+   echo -e "FROM mistral\nSYSTEM \"You are an AI email assistant. Generate professional and concise email responses based on user queries. Be polite and context-aware.\"" > Modelfile
+   docker exec -it ollama ollama create AEA -f Modelfile
+   
+   # Test the fine-tuned model
+   curl -X POST http://localhost:11434/api/generate \
+        -d '{"model": "AEA", "prompt": "Write a short email", "stream": false}'
+   ```
+   
+   To use the fine-tuned model, set `ai.model.name=AEA` in your application.properties or use the environment variable `AI_MODEL_NAME=AEA`.
+
 ## Configuration Options
 
 - **Properties File**: Use `application.properties` for configuration
 - **Environment Variables**: Set values like `EMAIL_ACCOUNT_ADDRESS=your-email@gmail.com`
 - **Dotenv File**: Create `.env` file based on `.env.example`
 - **Test Profile**: Use `-Dspring-boot.run.profiles=test` for development without real credentials
+
+### AI Model Configuration
+
+The application supports configuring the AI model used for generating email responses:
+
+| Property | Environment Variable | Default | Description |
+|----------|---------------------|---------|-------------|
+| `ai.model.name` | `AI_MODEL_NAME` | `mistral` | The Ollama model to use (e.g., `mistral` or `AEA`) |
+| `ai.model.api.url` | `AI_MODEL_API_URL` | `http://localhost:11434/api/generate` | The URL of the Ollama API |
+| `ai.model.connect.timeout` | `AI_MODEL_CONNECT_TIMEOUT` | `10000` | Connection timeout in milliseconds |
+| `ai.model.read.timeout` | `AI_MODEL_READ_TIMEOUT` | `30000` | Read timeout in milliseconds |
 
 ## Documentation
 

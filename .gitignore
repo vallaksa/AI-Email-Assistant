@@ -1,4 +1,4 @@
-HELP.md
+
 target/
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
@@ -31,3 +31,40 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Application Specific ###
+
+# ============================================================================
+# ENVIRONMENT & CREDENTIALS (CRITICAL - NEVER COMMIT)
+# ============================================================================
+# Environment variable files
+.env
+.env.local
+.env.*.local
+
+# Sensitive credential files
+credentials.json
+*-credentials.json
+*-secrets.json
+secrets/
+*.p12
+*.jks
+
+# OAuth tokens and refresh tokens
+/tokens/
+token.json
+refresh_token.json
+
+# API keys and tokens
+*.key
+*.secret
+.api-key
+api-key.txt
+
+# ============================================================================
+# IDE & EDITOR FILES
+# ============================================================================
+.DS_Store
+*.swp
+*~
+
