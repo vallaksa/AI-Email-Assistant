@@ -1,4 +1,4 @@
-package com.ai.emailassistant.model.model;
+package com.ai.emailassistant.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

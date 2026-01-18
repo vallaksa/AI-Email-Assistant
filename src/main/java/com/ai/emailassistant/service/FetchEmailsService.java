@@ -1,6 +1,6 @@
 package com.ai.emailassistant.service;
 
-import com.ai.emailassistant.model.model.EmailMessage;
+import com.ai.emailassistant.model.EmailMessage;
 import com.ai.emailassistant.model.ports.EmailProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

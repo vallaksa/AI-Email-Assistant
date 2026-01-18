@@ -1,11 +1,10 @@
 package com.ai.emailassistant.controller;
 
-import com.ai.emailassistant.model.model.FetchEmailsRequest;
 import com.ai.emailassistant.service.FetchEmailsService;
 import com.ai.emailassistant.service.ReplyToEmailService;
-import com.ai.emailassistant.model.model.ApiResponse;
-import com.ai.emailassistant.model.model.EmailMessage;
-import com.ai.emailassistant.model.model.ReplyRequest;
+import com.ai.emailassistant.model.RequestResponse.EmailResponse;
+import com.ai.emailassistant.model.EmailMessage;
+import com.ai.emailassistant.model.RequestResponse.AIRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -31,17 +30,17 @@ public class EmailController {
      * POST /api/emails/fetch
      * Fetch the most recent emails.
      */
-    @PostMapping("/fetch")
-    public ResponseEntity<ApiResponse<List<EmailMessage>>> fetchEmails(
-        @RequestBody FetchEmailsRequest request
+    @PostMapping("/fetch/{limit}")
+    public ResponseEntity<EmailResponse<List<EmailMessage>>> fetchEmails(
+        @PathVariable int limit
     ) {
-        int limit = request != null && request.getLimit() != null ? request.getLimit() : 10;
-        log.info("Received request to fetch emails with limit: {}", limit);
+        int resolvedLimit = limit > 0 ? limit : 10;
+        log.info("Received request to fetch emails with limit: {}", resolvedLimit);
 
-        List<EmailMessage> emails = fetchEmailsService.execute(limit);
+        List<EmailMessage> emails = fetchEmailsService.execute(resolvedLimit);
 
         return ResponseEntity.ok(
-            ApiResponse.ok("Successfully fetched emails", emails)
+                EmailResponse.ok("Successfully fetched emails", emails)
         );
     }
 
@@ -50,8 +49,8 @@ public class EmailController {
      * Generate and send an AI reply to a selected email.
      */
     @PostMapping("/reply")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> replyToEmail(
-        @RequestBody ReplyRequest request
+    public ResponseEntity<EmailResponse<Map<String, Object>>> replyToEmail(
+        @RequestBody AIRequest request
     ) {
         log.info("Received request to reply to email.");
 
@@ -65,7 +64,7 @@ public class EmailController {
         data.put("replyPreview", replyPreview);
 
         return ResponseEntity.ok(
-            ApiResponse.ok("Reply sent successfully", data)
+            EmailResponse.ok("Reply sent successfully", data)
         );
     }
 }

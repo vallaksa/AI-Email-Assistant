@@ -1,4 +1,4 @@
-package com.ai.emailassistant.model.model;
+package com.ai.emailassistant.model.RequestResponse;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class ReplyRequest {
+public class AIRequest {
     private int index;
     private String userInstruction;
 }

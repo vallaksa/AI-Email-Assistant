@@ -1,6 +1,6 @@
 package com.ai.emailassistant.model.ports;
 
-import com.ai.emailassistant.model.model.EmailMessage;
+import com.ai.emailassistant.model.EmailMessage;
 
 /**
  * Port (interface) defining the contract for AI operations.
