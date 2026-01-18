@@ -1,10 +1,11 @@
-package com.ai.emailassistant.api;
+package com.ai.emailassistant.controller;
 
-import com.ai.emailassistant.application.FetchEmailsService;
-import com.ai.emailassistant.application.ReplyToEmailService;
-import com.ai.emailassistant.domain.model.ApiResponse;
-import com.ai.emailassistant.domain.model.EmailMessage;
-import com.ai.emailassistant.domain.model.ReplyRequest;
+import com.ai.emailassistant.model.model.FetchEmailsRequest;
+import com.ai.emailassistant.service.FetchEmailsService;
+import com.ai.emailassistant.service.ReplyToEmailService;
+import com.ai.emailassistant.model.model.ApiResponse;
+import com.ai.emailassistant.model.model.EmailMessage;
+import com.ai.emailassistant.model.model.ReplyRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -28,13 +29,14 @@ public class EmailController {
     private final ReplyToEmailService replyToEmailService;
 
     /**
-     * GET /api/emails?limit=10
+     * POST /api/emails/fetch
      * Fetch the most recent emails.
      */
-    @GetMapping
+    @PostMapping("/fetch")
     public ResponseEntity<ApiResponse<List<EmailMessage>>> fetchEmails(
-        @RequestParam(value = "limit", defaultValue = "10") int limit
+        @RequestBody FetchEmailsRequest request
     ) {
+        int limit = request != null && request.getLimit() != null ? request.getLimit() : 10;
         log.info("Received request to fetch emails with limit: {}", limit);
 
         try {

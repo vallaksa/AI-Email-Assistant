@@ -125,14 +125,27 @@ java -jar target/Email-Assistant-0.0.1-SNAPSHOT.jar --spring.profiles.active=tes
 
 ### Fetch Emails
 ```
-GET /email/fetch/{count}
-GET /email/fetch?count={number}
+POST /api/emails/fetch
+```
+
+Request body example:
+```json
+{
+  "limit": 10
+}
 ```
 
 ### Reply to Emails
 ```
-POST /email/reply/{emailIndex}
-POST /email/reply?emailIndex={index}
+POST /api/emails/reply
+```
+
+Request body example:
+```json
+{
+  "index": 1,
+  "userInstruction": "Reply with a polite thank-you and ask for next steps."
+}
 ```
 
 ## Detailed Setup Guide

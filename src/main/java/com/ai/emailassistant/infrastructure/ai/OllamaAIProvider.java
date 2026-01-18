@@ -1,7 +1,7 @@
 package com.ai.emailassistant.infrastructure.ai;
 
-import com.ai.emailassistant.domain.model.EmailMessage;
-import com.ai.emailassistant.domain.ports.AIProvider;
+import com.ai.emailassistant.model.model.EmailMessage;
+import com.ai.emailassistant.model.ports.AIProvider;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;

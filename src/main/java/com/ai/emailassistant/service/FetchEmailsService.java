@@ -1,7 +1,7 @@
-package com.ai.emailassistant.application;
+package com.ai.emailassistant.service;
 
-import com.ai.emailassistant.domain.model.EmailMessage;
-import com.ai.emailassistant.domain.ports.EmailProvider;
+import com.ai.emailassistant.model.model.EmailMessage;
+import com.ai.emailassistant.model.ports.EmailProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
