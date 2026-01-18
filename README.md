@@ -6,7 +6,7 @@ A Spring Boot application that provides a RESTful API for managing emails using 
 
 - **Email Management**: Fetch emails from your inbox and send AI-generated replies
 - **Gmail OAuth2 Integration**: Secure access to your Gmail account
-- **AI-Powered Responses**: Generate intelligent email replies using Ollama with Mistral LLM
+- **AI-Powered Responses**: Generate intelligent email replies using a configurable AI provider
 - **Test Mode**: Run with mock implementations for development without real credentials
 - **Flexible Configuration**: Environment variables or properties file for easy setup
 - **Security-Focused**: Sensitive data kept out of source control
@@ -15,8 +15,7 @@ A Spring Boot application that provides a RESTful API for managing emails using 
 
 - Java 17+ and Spring Boot 3.4.3
 - Gmail API with OAuth2 authentication
-- Ollama with Mistral LLM for AI responses
-- Docker for running the AI model
+- Configurable AI providers (local or hosted)
 
 ## Quick Start
 
@@ -24,7 +23,7 @@ A Spring Boot application that provides a RESTful API for managing emails using 
 
 - JDK 17 or higher
 - Maven 3.6+
-- Docker (for running Ollama)
+- Docker (optional, for running a local AI server)
 - Google API credentials (not required for test mode)
 
 ### Installation
@@ -50,37 +49,9 @@ A Spring Boot application that provides a RESTful API for managing emails using 
    email.account.address=your-email@gmail.com
    ```
 
-4. **Setup Ollama with Mistral** (optional for test mode)
-   ```bash
-   # Pull and run Ollama
-   docker pull ghcr.io/ollama/ollama
-   docker run --rm -d --name ollama -p 11434:11434 ghcr.io/ollama/ollama
-   
-   # Pull the Mistral model
-   docker exec -it ollama ollama pull mistral
-   ```
-
-5. **Using the Fine-tuned AEA Model** (optional)
-   
-   The application supports using a fine-tuned model specifically for email responses:
-   
-   ```bash
-   # Create the fine-tuned model (run once)
-   echo -e "FROM mistral\nSYSTEM \"You are an AI email assistant. Generate professional and concise email responses based on user queries. Be polite and context-aware.\"" > Modelfile
-   docker exec -it ollama ollama create AEA -f Modelfile
-   
-   # Configure the application to use the fine-tuned model
-   # Option 1: Edit application.properties
-   ai.model.name=AEA
-   
-   # Option 2: Set environment variable
-   export AI_MODEL_NAME=AEA
-   
-   # Option 3: Add to .env file
-   AI_MODEL_NAME=AEA
-   ```
-   
-   Note: Other users who don't have the fine-tuned model will automatically fall back to using the default Mistral model.
+4. **Configure AI provider** (optional for test mode)
+   - Local provider (default): set `AI_PROVIDER=local` and point `AI_LOCAL_API_URL` to your local server.
+   - Hosted provider: set `AI_PROVIDER=openai` and provide `AI_OPENAI_API_KEY`.
 
 6. **Build and run**
    ```bash
@@ -169,41 +140,9 @@ Request body example:
    - Create OAuth client ID (Desktop app type)
    - Download the JSON file and rename to `credentials.json`
 
-### Ollama Mistral Setup
+### AI Provider Setup
 
-The application uses Ollama with Mistral LLM for generating email replies:
-
-1. **Run Ollama**
-   ```bash
-   docker run --rm -d --name ollama -p 11434:11434 ghcr.io/ollama/ollama
-   ```
-
-2. **Install Mistral**
-   ```bash
-   docker exec -it ollama ollama pull mistral
-   ```
-
-3. **Verify Installation**
-   ```bash
-   curl -X POST http://localhost:11434/api/generate \
-        -d '{"model": "mistral", "prompt": "Write a short email", "stream": false}'
-   ```
-
-4. **Fine-tuned AEA Model** (optional)
-   
-   For improved email responses, you can use the fine-tuned AEA model:
-   
-   ```bash
-   # Create the fine-tuned model
-   echo -e "FROM mistral\nSYSTEM \"You are an AI email assistant. Generate professional and concise email responses based on user queries. Be polite and context-aware.\"" > Modelfile
-   docker exec -it ollama ollama create AEA -f Modelfile
-   
-   # Test the fine-tuned model
-   curl -X POST http://localhost:11434/api/generate \
-        -d '{"model": "AEA", "prompt": "Write a short email", "stream": false}'
-   ```
-   
-   To use the fine-tuned model, set `ai.model.name=AEA` in your application.properties or use the environment variable `AI_MODEL_NAME=AEA`.
+Provide an AI base URL via environment variables. The app uses a fixed request payload and parses a plain-text reply.
 
 ## Configuration Options
 
@@ -214,14 +153,14 @@ The application uses Ollama with Mistral LLM for generating email replies:
 
 ### AI Model Configuration
 
-The application supports configuring the AI model used for generating email responses:
-
 | Property | Environment Variable | Default | Description |
 |----------|---------------------|---------|-------------|
-| `ai.model.name` | `AI_MODEL_NAME` | `mistral` | The Ollama model to use (e.g., `mistral` or `AEA`) |
-| `ai.model.api.url` | `AI_MODEL_API_URL` | `http://localhost:11434/api/generate` | The URL of the Ollama API |
-| `ai.model.connect.timeout` | `AI_MODEL_CONNECT_TIMEOUT` | `10000` | Connection timeout in milliseconds |
-| `ai.model.read.timeout` | `AI_MODEL_READ_TIMEOUT` | `30000` | Read timeout in milliseconds |
+| `ai.api.url` | `AI_API_URL` | *(required)* | Base URL for the AI HTTP endpoint |
+| `ai.api.key` | `AI_API_KEY` | *(optional)* | API key (enables auth header) |
+| `ai.api.auth-header` | `AI_AUTH_HEADER` | *(optional)* | Header name for auth (required if key is set) |
+| `ai.api.auth-prefix` | `AI_AUTH_PREFIX` | *(optional)* | Prefix for auth header (e.g., `Bearer`) |
+| `ai.api.content-type` | `AI_CONTENT_TYPE` | `application/json` | Content type for the request |
+| `ai.model.name` | `AI_MODEL_NAME` | *(optional)* | Model id included in the request payload |
 
 ## Documentation
 

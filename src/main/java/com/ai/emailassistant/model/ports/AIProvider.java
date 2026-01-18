@@ -4,7 +4,7 @@ import com.ai.emailassistant.model.EmailMessage;
 
 /**
  * Port (interface) defining the contract for AI operations.
- * Implementations: OllamaAIProvider, etc.
+ * Implementations: local or hosted AI providers.
  */
 public interface AIProvider {
 
