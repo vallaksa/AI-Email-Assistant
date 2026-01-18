@@ -1,6 +1,6 @@
-package com.ai.emailassistant.api;
+package com.ai.emailassistant.controller;
 
-import com.ai.emailassistant.domain.model.ApiResponse;
+import com.ai.emailassistant.model.model.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
