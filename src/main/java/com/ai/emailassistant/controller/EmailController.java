@@ -1,10 +1,10 @@
-package com.ai.emailassistant.api;
+package com.ai.emailassistant.controller;
 
-import com.ai.emailassistant.application.FetchEmailsService;
-import com.ai.emailassistant.application.ReplyToEmailService;
-import com.ai.emailassistant.domain.model.ApiResponse;
-import com.ai.emailassistant.domain.model.EmailMessage;
-import com.ai.emailassistant.domain.model.ReplyRequest;
+import com.ai.emailassistant.service.FetchEmailsService;
+import com.ai.emailassistant.service.ReplyToEmailService;
+import com.ai.emailassistant.model.model.ApiResponse;
+import com.ai.emailassistant.model.model.EmailMessage;
+import com.ai.emailassistant.model.model.ReplyRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;

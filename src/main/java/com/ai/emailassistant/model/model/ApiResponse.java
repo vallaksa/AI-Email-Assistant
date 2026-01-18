@@ -1,4 +1,4 @@
-package com.ai.emailassistant.domain.model;
+package com.ai.emailassistant.model.model;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
