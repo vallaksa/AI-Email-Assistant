@@ -1,15 +1,15 @@
 package com.ai.emailassistant.infrastructure.ai;
 
-import com.ai.emailassistant.model.EmailMessage;
+import com.ai.emailassistant.domain.model.EmailMessage;
 
 /**
  * Shared prompt builder for AI providers.
  */
-final class PromptBuilder {
+public final class PromptBuilder {
     private PromptBuilder() {
     }
 
-    static String buildPrompt(EmailMessage email, String userInstruction) {
+    public static String buildPrompt(EmailMessage email, String userInstruction) {
         StringBuilder prompt = new StringBuilder();
 
         prompt.append("You are a professional email assistant. Generate a concise, ")
