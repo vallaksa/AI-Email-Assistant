@@ -46,7 +46,7 @@ ai:
     auth-prefix: ${AI_AUTH_PREFIX:}
     content-type: ${AI_CONTENT_TYPE:application/json}
   model:
-    name: ${AI_MODEL_NAME:}
+    name: ${AI_MODEL_NAME:mistral}
   timeouts:
     connect-ms: ${AI_CONNECT_TIMEOUT:10000}
     read-ms: ${AI_READ_TIMEOUT:60000}
