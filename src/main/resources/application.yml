@@ -37,14 +37,19 @@ gmail:
     starttls: true
     ssl-trust: smtp.gmail.com
 
-# AI Model Configuration (All from Environment Variables)
+# AI Configuration (All from Environment Variables)
 ai:
+  api:
+    url: ${AI_API_URL}
+    key: ${AI_API_KEY:}
+    auth-header: ${AI_AUTH_HEADER:}
+    auth-prefix: ${AI_AUTH_PREFIX:}
+    content-type: ${AI_CONTENT_TYPE:application/json}
   model:
-    name: ${AI_MODEL_NAME}
-    api-url: ${AI_MODEL_API_URL}
-    api-key: ${AI_MODEL_API_KEY}
-    connect-timeout: 10000
-    read-timeout: 60000
+    name: ${AI_MODEL_NAME:mistral}
+  timeouts:
+    connect-ms: ${AI_CONNECT_TIMEOUT:10000}
+    read-ms: ${AI_READ_TIMEOUT:60000}
 
 
 # Application-specific Configuration
@@ -54,4 +59,3 @@ application:
     default-limit: 10
   reply:
     timeout-seconds: 30
-

@@ -1,231 +1,609 @@
 # Email Assistant API
 
-A Spring Boot application that provides a RESTful API for managing emails using Gmail with OAuth2 authentication and AI-powered responses.
+A Spring Boot application that provides a RESTful API for managing emails using Gmail with OAuth2 authentication and AI-powered responses. Built with clean architecture principles for maintainability and extensibility.
 
-## Features
+## Table of Contents
 
-- **Email Management**: Fetch emails from your inbox and send AI-generated replies
-- **Gmail OAuth2 Integration**: Secure access to your Gmail account
-- **AI-Powered Responses**: Generate intelligent email replies using Ollama with Mistral LLM
-- **Test Mode**: Run with mock implementations for development without real credentials
-- **Flexible Configuration**: Environment variables or properties file for easy setup
-- **Security-Focused**: Sensitive data kept out of source control
+- [Architecture](#architecture)
+- [Application Flow](#application-flow)
+- [Prerequisites & Setup](#prerequisites--setup)
+- [Google Console Onboarding](#google-console-onboarding)
+- [Local AI Setup (Ollama)](#local-ai-setup-ollama)
+- [API Endpoints](#api-endpoints)
+- [Configuration](#configuration)
+- [Technologies](#technologies)
 
-## Technologies
+## Architecture
 
-- Java 17+ and Spring Boot 3.4.3
-- Gmail API with OAuth2 authentication
-- Ollama with Mistral LLM for AI responses
-- Docker for running the AI model
+The application follows **Clean Architecture** principles with clear separation of concerns across four layers:
 
-## Quick Start
+### Architecture Diagram
+
+```mermaid
+graph TB
+    subgraph "API Layer (Presentation)"
+        Controller[EmailController]
+        DTOs[Request/Response DTOs]
+        Mapper[EmailMapper]
+        ExceptionHandler[GlobalExceptionHandler]
+    end
+    
+    subgraph "Application Layer (Use Cases)"
+        FetchService[FetchEmailsService]
+        ReplyService[ReplyToEmailService]
+        Repository[EmailRepository]
+    end
+    
+    subgraph "Domain Layer (Business Logic)"
+        EmailMessage[EmailMessage]
+        EmailPort[EmailProvider Port]
+        AIPort[AIProvider Port]
+    end
+    
+    subgraph "Infrastructure Layer (External)"
+        GmailProvider[GmailEmailProvider]
+        GmailOAuth[GmailOAuthService]
+        HttpAIProvider[HttpAIProvider]
+        AIFactory[AIProviderFactory]
+    end
+    
+    Controller --> FetchService
+    Controller --> ReplyService
+    Controller --> Mapper
+    Controller --> DTOs
+    
+    FetchService --> EmailPort
+    FetchService --> Repository
+    ReplyService --> EmailPort
+    ReplyService --> AIPort
+    ReplyService --> Repository
+    
+    EmailPort --> GmailProvider
+    AIPort --> HttpAIProvider
+    
+    GmailProvider --> GmailOAuth
+    AIFactory --> HttpAIProvider
+    
+    FetchService --> EmailMessage
+    ReplyService --> EmailMessage
+    Repository --> EmailMessage
+```
+
+### Package Structure
+
+```
+com.ai.emailassistant/
+├── api/                    # Presentation Layer
+│   ├── controller/         # REST Controllers
+│   ├── dto/                # Request/Response DTOs
+│   ├── mapper/             # Domain ↔ DTO Mappers
+│   └── exception/          # Exception Handlers
+│
+├── application/            # Application Layer
+│   ├── service/            # Use Case Services
+│   └── repository/         # Repository Interfaces & Implementations
+│
+├── domain/                 # Domain Layer
+│   ├── model/              # Domain Entities
+│   └── port/               # Port Interfaces (Contracts)
+│
+├── infrastructure/         # Infrastructure Layer
+│   ├── email/              # Email Provider Implementations
+│   │   └── gmail/          # Gmail-specific implementation
+│   └── ai/                 # AI Provider Implementations
+│       ├── http/           # HTTP-based AI provider
+│       └── config/         # Provider configurations
+│
+├── common/                 # Shared Constants
+├── config/                 # Application Configuration
+└── exception/              # Domain Exceptions
+```
+
+### Layer Responsibilities
+
+- **API Layer**: Handles HTTP requests/responses, validation, DTO mapping
+- **Application Layer**: Orchestrates use cases, business workflows
+- **Domain Layer**: Core business entities and contracts (ports)
+- **Infrastructure Layer**: External service implementations (adapters)
+
+## Application Flow
+
+### Fetch Emails Flow
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Controller
+    participant FetchService
+    participant EmailProvider
+    participant Repository
+    participant GmailAPI
+    
+    Client->>Controller: POST /api/emails/fetch/{limit}
+    Controller->>Controller: Validate & Map DTO
+    Controller->>FetchService: execute(limit)
+    FetchService->>FetchService: Validate limit (1-50)
+    FetchService->>EmailProvider: fetchLatest(limit)
+    EmailProvider->>GmailAPI: Gmail API Call
+    GmailAPI-->>EmailProvider: Email Messages
+    EmailProvider-->>FetchService: List<EmailMessage>
+    FetchService->>FetchService: Set indices (1-based)
+    FetchService->>Repository: saveAll(emails)
+    Repository-->>FetchService: Success
+    FetchService-->>Controller: List<EmailMessage>
+    Controller->>Controller: Map to EmailDto
+    Controller-->>Client: ApiResponse<List<EmailDto>>
+```
+
+### Reply to Email Flow
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Controller
+    participant ReplyService
+    participant Repository
+    participant AIProvider
+    participant EmailProvider
+    participant GmailAPI
+    
+    Client->>Controller: POST /api/emails/reply
+    Controller->>Controller: Validate Request DTO
+    Controller->>ReplyService: execute(index, instruction)
+    ReplyService->>ReplyService: Validate index > 0
+    ReplyService->>Repository: findByIndex(index)
+    Repository-->>ReplyService: Optional<EmailMessage>
+    alt Email Not Found
+        ReplyService-->>Controller: EmailNotFoundException
+        Controller-->>Client: 404 Error Response
+    else Email Found
+        ReplyService->>AIProvider: generateReply(email, instruction)
+        AIProvider->>AIProvider: Build prompt
+        AIProvider->>AIProvider: HTTP POST to AI API
+        AIProvider-->>ReplyService: Generated reply text
+        ReplyService->>EmailProvider: reply(emailId, replyBody)
+        EmailProvider->>GmailAPI: Send reply via Gmail API
+        GmailAPI-->>EmailProvider: Success
+        EmailProvider-->>ReplyService: Success
+        ReplyService->>ReplyService: Create preview (200 chars)
+        ReplyService-->>Controller: Reply preview
+        Controller-->>Client: ApiResponse with preview
+    end
+```
+
+## Prerequisites & Setup
 
 ### Prerequisites
 
-- JDK 17 or higher
-- Maven 3.6+
-- Docker (for running Ollama)
-- Google API credentials (not required for test mode)
+- **JDK 17+** (Java Development Kit)
+- **Maven 3.6+** (Build tool)
+- **Google Cloud Account** (for Gmail API access)
+- **AI Provider** (Ollama for local, or any HTTP-based AI API)
 
-### Installation
+### Step 1: Clone and Build
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/your-username/Email-Assistant.git
-   cd Email-Assistant
+```bash
+git clone <repository-url>
+cd Email-Assistant
+mvn clean install
+```
+
+### Step 2: Google Console Onboarding
+
+Follow the detailed steps in [Google Console Onboarding](#google-console-onboarding) section below.
+
+### Step 3: Setup Local AI (Ollama)
+
+Follow the steps in [Local AI Setup (Ollama)](#local-ai-setup-ollama) section below.
+
+### Step 4: Configure Environment Variables
+
+Create a `.env` file in the project root:
+
+```bash
+# Gmail Configuration
+GMAIL_EMAIL=your-email@gmail.com
+GMAIL_CLIENT_ID=your-client-id.apps.googleusercontent.com
+GMAIL_CLIENT_SECRET=your-client-secret
+
+# AI Configuration (Ollama)
+AI_API_URL=http://localhost:11434/api/generate
+AI_MODEL_NAME=mistral
+AI_AUTH_HEADER=
+AI_AUTH_PREFIX=
+
+# Optional: Custom timeouts
+AI_CONNECT_TIMEOUT=10000
+AI_READ_TIMEOUT=60000
+```
+
+### Step 5: Place Gmail Credentials
+
+1. Download `credentials.json` from Google Cloud Console (see onboarding steps)
+2. Place it in the project root directory:
+   ```
+   Email-Assistant/
+   ├── credentials.json  ← Place here
+   ├── pom.xml
+   └── src/
    ```
 
-2. **Setup Google API credentials** (skip if using test mode)
-   - Create a project in [Google Cloud Console](https://console.cloud.google.com/)
-   - Enable the Gmail API and set up OAuth consent screen
-   - Create OAuth credentials and download as `credentials.json`
-   - Place `credentials.json` in the project root directory
-
-3. **Configure your email**
-   ```bash
-   cp src/main/resources/application.properties.template src/main/resources/application.properties
-   ```
-   Edit to set your Gmail address:
-   ```properties
-   email.account.address=your-email@gmail.com
-   ```
-
-4. **Setup Ollama with Mistral** (optional for test mode)
-   ```bash
-   # Pull and run Ollama
-   docker pull ghcr.io/ollama/ollama
-   docker run --rm -d --name ollama -p 11434:11434 ghcr.io/ollama/ollama
-   
-   # Pull the Mistral model
-   docker exec -it ollama ollama pull mistral
-   ```
-
-5. **Using the Fine-tuned AEA Model** (optional)
-   
-   The application supports using a fine-tuned model specifically for email responses:
-   
-   ```bash
-   # Create the fine-tuned model (run once)
-   echo -e "FROM mistral\nSYSTEM \"You are an AI email assistant. Generate professional and concise email responses based on user queries. Be polite and context-aware.\"" > Modelfile
-   docker exec -it ollama ollama create AEA -f Modelfile
-   
-   # Configure the application to use the fine-tuned model
-   # Option 1: Edit application.properties
-   ai.model.name=AEA
-   
-   # Option 2: Set environment variable
-   export AI_MODEL_NAME=AEA
-   
-   # Option 3: Add to .env file
-   AI_MODEL_NAME=AEA
-   ```
-   
-   Note: Other users who don't have the fine-tuned model will automatically fall back to using the default Mistral model.
-
-6. **Build and run**
-   ```bash
-   # Run with real email integration
-   mvn clean package
-   java -jar target/Email-Assistant-0.0.1-SNAPSHOT.jar
-   
-   # Run in test mode (no real email credentials needed)
-   mvn spring-boot:run -Dspring-boot.run.profiles=test
-   ```
-   
-7. **Access the API**
-   ```
-   http://localhost:8081
-   ```
-
-## Test Mode
-
-The application supports a `test` profile that uses mock implementations instead of connecting to real email servers:
-
-### Features in Test Mode
-
-- **No External Dependencies**: Works without Gmail API credentials
-- **Mock Emails**: Returns simulated email messages
-- **Mock AI Responses**: Provides predefined responses instead of calling the LLM
-- **Simplified Testing**: Focus on API functionality without external services
-
-### Running in Test Mode
+### Step 6: Run the Application
 
 ```bash
 # Using Maven
-mvn spring-boot:run -Dspring-boot.run.profiles=test
+mvn spring-boot:run
 
-# Using Java jar
-java -jar target/Email-Assistant-0.0.1-SNAPSHOT.jar --spring.profiles.active=test
+# Or using the JAR
+java -jar target/Email-Assistant-0.0.1-SNAPSHOT.jar
+```
 
-# Using .env file
-# Add SPRING_PROFILES_ACTIVE=test to your .env file
+The application will start on `http://localhost:8080`
+
+## Google Console Onboarding
+
+### Step 1: Create a Google Cloud Project
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Click on the project dropdown at the top
+3. Click **"New Project"**
+4. Enter project name: `Email Assistant` (or any name)
+5. Click **"Create"**
+6. Wait for project creation and select it
+
+### Step 2: Enable Gmail API
+
+1. In the Google Cloud Console, navigate to **"APIs & Services"** > **"Library"**
+2. Search for **"Gmail API"**
+3. Click on **"Gmail API"** from the results
+4. Click **"Enable"** button
+5. Wait for the API to be enabled
+
+### Step 3: Configure OAuth Consent Screen
+
+1. Navigate to **"APIs & Services"** > **"OAuth consent screen"**
+2. Select **"External"** user type (unless you have Google Workspace)
+3. Click **"Create"**
+4. Fill in the required information:
+   - **App name**: `Email Assistant`
+   - **User support email**: Your email address
+   - **Developer contact information**: Your email address
+5. Click **"Save and Continue"**
+6. On **"Scopes"** page:
+   - Click **"Add or Remove Scopes"**
+   - Select the following scopes:
+     - `https://www.googleapis.com/auth/gmail.readonly`
+     - `https://www.googleapis.com/auth/gmail.send`
+   - Click **"Update"** then **"Save and Continue"**
+7. On **"Test users"** page:
+   - Click **"Add Users"**
+   - Add your Gmail address
+   - Click **"Add"** then **"Save and Continue"**
+8. Review and click **"Back to Dashboard"**
+
+### Step 4: Create OAuth 2.0 Credentials
+
+1. Navigate to **"APIs & Services"** > **"Credentials"**
+2. Click **"+ CREATE CREDENTIALS"** at the top
+3. Select **"OAuth client ID"**
+4. If prompted, select **"Desktop app"** as the application type
+5. Fill in:
+   - **Name**: `Email Assistant Client`
+   - **Application type**: **Desktop app**
+6. Click **"Create"**
+7. A popup will appear with your credentials:
+   - **Client ID**: Copy this value
+   - **Client Secret**: Copy this value
+8. Click **"OK"**
+
+### Step 5: Download Credentials File
+
+1. In the **"Credentials"** page, find your OAuth 2.0 Client ID
+2. Click the **download icon** (⬇️) next to your client
+3. The file will be named something like `client_secret_xxxxx.apps.googleusercontent.com.json`
+4. **Rename** this file to `credentials.json`
+5. **Move** it to your project root directory
+
+### Step 6: Configure Environment Variables
+
+Add the credentials to your `.env` file:
+
+```bash
+GMAIL_EMAIL=your-email@gmail.com
+GMAIL_CLIENT_ID=xxxxx.apps.googleusercontent.com
+GMAIL_CLIENT_SECRET=your-client-secret-here
+```
+
+### First Run Authentication
+
+When you run the application for the first time:
+
+1. The application will open a browser window
+2. Sign in with your Google account (the one you added as a test user)
+3. Click **"Allow"** to grant permissions
+4. The OAuth token will be saved in the `tokens/` directory
+5. Subsequent runs won't require re-authentication (until token expires)
+
+## Local AI Setup (Ollama)
+
+### Step 1: Install Ollama
+
+**macOS:**
+```bash
+brew install ollama
+# Or download from https://ollama.ai/download
+```
+
+**Linux:**
+```bash
+curl -fsSL https://ollama.ai/install.sh | sh
+```
+
+**Windows:**
+Download installer from [https://ollama.ai/download](https://ollama.ai/download)
+
+### Step 2: Start Ollama Service
+
+```bash
+ollama serve
+```
+
+This starts Ollama on `http://localhost:11434`
+
+### Step 3: Download a Model
+
+```bash
+# Download Mistral (recommended, ~4GB)
+ollama pull mistral
+
+# Or download other models:
+ollama pull llama2
+ollama pull codellama
+```
+
+### Step 4: Test Ollama API
+
+```bash
+curl http://localhost:11434/api/generate -d '{
+  "model": "mistral",
+  "prompt": "Hello, how are you?",
+  "stream": false
+}'
+```
+
+You should get a JSON response with the generated text.
+
+### Step 5: Configure Application
+
+Add to your `.env` file:
+
+```bash
+AI_API_URL=http://localhost:11434/api/generate
+AI_MODEL_NAME=mistral
+AI_AUTH_HEADER=
+AI_AUTH_PREFIX=
+```
+
+**Note:** Ollama doesn't require authentication, so leave `AI_AUTH_HEADER` and `AI_AUTH_PREFIX` empty.
+
+### Alternative: Using Other AI Providers
+
+The application supports any HTTP-based AI API. Configure accordingly:
+
+```bash
+# Example: OpenAI
+AI_API_URL=https://api.openai.com/v1/chat/completions
+AI_API_KEY=sk-xxxxx
+AI_AUTH_HEADER=Authorization
+AI_AUTH_PREFIX=Bearer
+AI_MODEL_NAME=gpt-4
+
+# Example: Custom API
+AI_API_URL=https://your-ai-api.com/generate
+AI_API_KEY=your-api-key
+AI_AUTH_HEADER=X-API-Key
+AI_AUTH_PREFIX=
 ```
 
 ## API Endpoints
 
-### Fetch Emails
+### Base URL
+
 ```
-POST /api/emails/fetch
+http://localhost:8080/api/emails
 ```
 
-Request body example:
+### 1. Fetch Emails
+
+Fetch the most recent emails from your Gmail inbox.
+
+**Endpoint:** `POST /api/emails/fetch/{limit}`
+
+**Path Parameters:**
+- `limit` (integer): Number of emails to fetch (1-50). Defaults to 10 if 0 or negative.
+
+**Request Example:**
+```bash
+curl -X POST http://localhost:8080/api/emails/fetch/5
+```
+
+**Response Example:**
 ```json
 {
-  "limit": 10
+  "success": true,
+  "message": "Successfully fetched emails",
+  "data": [
+    {
+      "index": 1,
+      "emailId": "19bdd0564822fc92",
+      "from": "Tripadvisor <savings@mp1.tripadvisor.com>",
+      "subject": "Score great rates for your next big trip",
+      "snippet": "Hotels and experiences—we've got it all...",
+      "receivedAt": "2026-01-20T18:24:56Z"
+    },
+    {
+      "index": 2,
+      "emailId": "19bdca71dfd64010",
+      "from": "AllTrails <no-reply@email.alltrails.com>",
+      "subject": "Sale ends in three, two...",
+      "snippet": "Final hours to get 50% off ⏳...",
+      "receivedAt": "2026-01-20T20:07:55Z"
+    }
+  ]
 }
 ```
 
-### Reply to Emails
-```
-POST /api/emails/reply
-```
-
-Request body example:
+**Error Response:**
 ```json
 {
-  "index": 1,
-  "userInstruction": "Reply with a polite thank-you and ask for next steps."
+  "success": false,
+  "message": "Validation Failed",
+  "error": "Limit must be between 1 and 50",
+  "status": 400
 }
 ```
 
-## Detailed Setup Guide
+### 2. Reply to Email
 
-### Gmail API Credentials
+Generate and send an AI-powered reply to a selected email.
 
-1. **Create a Google Cloud Project**
-   - Visit [Google Cloud Console](https://console.cloud.google.com/)
-   - Create a new project
+**Endpoint:** `POST /api/emails/reply`
 
-2. **Enable Gmail API**
-   - Go to "APIs & Services" > "Library"
-   - Search for and enable "Gmail API"
+**Request Body:**
+```json
+{
+  "index": 2,
+  "userInstruction": "Reply professionally thanking them for their message and letting me know about new offers"
+}
+```
 
-3. **Configure OAuth**
-   - Set up the OAuth consent screen (External)
-   - Add scope: `https://mail.google.com/`
-   - Add your email as a test user
+**Request Fields:**
+- `index` (integer, required): 1-based index of the email from the last fetch (must be ≥ 1)
+- `userInstruction` (string, optional): Custom instruction for the AI reply generation
 
-4. **Create Credentials**
-   - Create OAuth client ID (Desktop app type)
-   - Download the JSON file and rename to `credentials.json`
+**Request Example:**
+```bash
+curl -X POST http://localhost:8080/api/emails/reply \
+  -H "Content-Type: application/json" \
+  -d '{
+    "index": 2,
+    "userInstruction": "Reply professionally thanking them for their message"
+  }'
+```
 
-### Ollama Mistral Setup
+**Response Example:**
+```json
+{
+  "success": true,
+  "message": "Reply sent successfully",
+  "data": {
+    "index": 2,
+    "replyPreview": "Thank you for reaching out regarding the new offers. I appreciate you taking the time to share this information with me. I'm interested in learning more about the details..."
+  }
+}
+```
 
-The application uses Ollama with Mistral LLM for generating email replies:
+**Error Responses:**
 
-1. **Run Ollama**
-   ```bash
-   docker run --rm -d --name ollama -p 11434:11434 ghcr.io/ollama/ollama
-   ```
+**Email Not Found:**
+```json
+{
+  "success": false,
+  "message": "Email Not Found",
+  "error": "Email not found at index: 99",
+  "status": 404
+}
+```
 
-2. **Install Mistral**
-   ```bash
-   docker exec -it ollama ollama pull mistral
-   ```
+**Validation Error:**
+```json
+{
+  "success": false,
+  "message": "Validation Failed",
+  "error": "index: Index must be greater than 0",
+  "status": 400
+}
+```
 
-3. **Verify Installation**
-   ```bash
-   curl -X POST http://localhost:11434/api/generate \
-        -d '{"model": "mistral", "prompt": "Write a short email", "stream": false}'
-   ```
+**AI Provider Error:**
+```json
+{
+  "success": false,
+  "message": "Provider Error",
+  "error": "Failed to connect to AI provider: http://localhost:11434/api/generate",
+  "status": 503
+}
+```
 
-4. **Fine-tuned AEA Model** (optional)
-   
-   For improved email responses, you can use the fine-tuned AEA model:
-   
-   ```bash
-   # Create the fine-tuned model
-   echo -e "FROM mistral\nSYSTEM \"You are an AI email assistant. Generate professional and concise email responses based on user queries. Be polite and context-aware.\"" > Modelfile
-   docker exec -it ollama ollama create AEA -f Modelfile
-   
-   # Test the fine-tuned model
-   curl -X POST http://localhost:11434/api/generate \
-        -d '{"model": "AEA", "prompt": "Write a short email", "stream": false}'
-   ```
-   
-   To use the fine-tuned model, set `ai.model.name=AEA` in your application.properties or use the environment variable `AI_MODEL_NAME=AEA`.
+## Configuration
 
-## Configuration Options
+### Environment Variables
 
-- **Properties File**: Use `application.properties` for configuration
-- **Environment Variables**: Set values like `EMAIL_ACCOUNT_ADDRESS=your-email@gmail.com`
-- **Dotenv File**: Create `.env` file based on `.env.example`
-- **Test Profile**: Use `-Dspring-boot.run.profiles=test` for development without real credentials
+| Variable | Description | Required | Default |
+|----------|-------------|----------|---------|
+| `GMAIL_EMAIL` | Your Gmail address | Yes | - |
+| `GMAIL_CLIENT_ID` | OAuth 2.0 Client ID | Yes | - |
+| `GMAIL_CLIENT_SECRET` | OAuth 2.0 Client Secret | Yes | - |
+| `AI_API_URL` | AI provider API endpoint | Yes | - |
+| `AI_MODEL_NAME` | AI model name | No | `mistral` |
+| `AI_API_KEY` | API key for authentication | No | - |
+| `AI_AUTH_HEADER` | Header name for auth | No* | - |
+| `AI_AUTH_PREFIX` | Auth prefix (e.g., "Bearer") | No | - |
+| `AI_CONNECT_TIMEOUT` | Connection timeout (ms) | No | `10000` |
+| `AI_READ_TIMEOUT` | Read timeout (ms) | No | `60000` |
 
-### AI Model Configuration
+*Required if `AI_API_KEY` is set
 
-The application supports configuring the AI model used for generating email responses:
+### Application Properties
 
-| Property | Environment Variable | Default | Description |
-|----------|---------------------|---------|-------------|
-| `ai.model.name` | `AI_MODEL_NAME` | `mistral` | The Ollama model to use (e.g., `mistral` or `AEA`) |
-| `ai.model.api.url` | `AI_MODEL_API_URL` | `http://localhost:11434/api/generate` | The URL of the Ollama API |
-| `ai.model.connect.timeout` | `AI_MODEL_CONNECT_TIMEOUT` | `10000` | Connection timeout in milliseconds |
-| `ai.model.read.timeout` | `AI_MODEL_READ_TIMEOUT` | `30000` | Read timeout in milliseconds |
+The application uses `application.yml` for configuration. Most values are loaded from environment variables. See `src/main/resources/application.yml` for the full configuration structure.
 
-## Documentation
+## Technologies
 
-API documentation is available at `http://localhost:8081/docs` when the application is running.
+- **Java 17+** - Programming language
+- **Spring Boot 3.4.3** - Application framework
+- **Spring Web** - REST API support
+- **Spring Validation** - Request validation
+- **Gmail API** - Email integration
+- **OAuth2** - Gmail authentication
+- **Lombok** - Boilerplate reduction
+- **Jackson** - JSON processing
+- **Maven** - Build tool
+
+## Features
+
+- ✅ **Clean Architecture** - Layered architecture with clear separation of concerns
+- ✅ **Gmail Integration** - OAuth2-based secure Gmail access
+- ✅ **AI-Powered Replies** - Configurable AI provider for intelligent email responses
+- ✅ **Repository Pattern** - Thread-safe in-memory email caching
+- ✅ **Factory Pattern** - Easy AI provider swapping via configuration
+- ✅ **Type-Safe Configuration** - `@ConfigurationProperties` for all settings
+- ✅ **Comprehensive Error Handling** - Global exception handler with proper HTTP status codes
+- ✅ **Validation** - Bean validation on all request DTOs
+- ✅ **CORS Support** - Pre-configured for UI integration
+- ✅ **Constants Management** - Centralized constants for maintainability
+- ✅ **Lombok Integration** - Reduced boilerplate code
+
+## Development
+
+### Running Tests
+
+```bash
+mvn test
+```
+
+### Building
+
+```bash
+mvn clean package
+```
+
+### Code Style
+
+- 4 spaces indentation
+- UpperCamelCase for classes
+- lowerCamelCase for methods/fields
+- SCREAMING_SNAKE_CASE for constants
 
 ## License
 
