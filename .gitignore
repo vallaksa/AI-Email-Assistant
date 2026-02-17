@@ -68,3 +68,5 @@ api-key.txt
 *.swp
 *~
 
+.DS_Store
+.gitattributes
