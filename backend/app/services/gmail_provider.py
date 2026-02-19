@@ -18,6 +18,7 @@ from app.models import EmailMessage
 GMAIL_SCOPES = [
     "https://www.googleapis.com/auth/gmail.readonly",
     "https://www.googleapis.com/auth/gmail.send",
+    "https://www.googleapis.com/auth/gmail.modify",
 ]
 
 
@@ -145,6 +146,58 @@ class GmailEmailProvider:
 
         body = {"raw": raw, "threadId": thread_id}
         service.users().messages().send(userId="me", body=body).execute()
+
+    def search(self, query: str, limit: int, label_ids: List[str] | None = None) -> List[EmailMessage]:
+        service = self._get_service()
+        if service is None:
+            return self._get_test_emails(min(limit, 3))
+
+        request = (
+            service.users()
+            .messages()
+            .list(
+                userId="me",
+                q=query,
+                maxResults=min(limit, settings.email_max_limit),
+                labelIds=label_ids or None,
+            )
+        )
+        response = request.execute()
+        emails: List[EmailMessage] = []
+        for idx, msg in enumerate(response.get("messages", []), start=1):
+            full_msg = (
+                service.users().messages().get(userId="me", id=msg["id"], format="full").execute()
+            )
+            parsed = self._parse_message(full_msg, idx)
+            if parsed:
+                emails.append(parsed)
+            if len(emails) >= limit:
+                break
+        return emails
+
+    def modify_labels(
+        self,
+        email_id: str,
+        add_labels: List[str] | None = None,
+        remove_labels: List[str] | None = None,
+    ) -> None:
+        service = self._get_service()
+        if service is None:
+            return
+        body = {
+            "addLabelIds": add_labels or [],
+            "removeLabelIds": remove_labels or [],
+        }
+        service.users().messages().modify(userId="me", id=email_id, body=body).execute()
+
+    def archive(self, email_id: str) -> None:
+        self.modify_labels(email_id, remove_labels=["INBOX"])
+
+    def delete(self, email_id: str) -> None:
+        service = self._get_service()
+        if service is None:
+            return
+        service.users().messages().trash(userId="me", id=email_id).execute()
 
     def _parse_message(self, msg: dict, idx: int) -> EmailMessage | None:
         if not msg or not msg.get("id"):
